@@ -83,7 +83,7 @@ enum AccountType {
 type Holder @entity {
   id: Bytes!
   balance: BigInt! # uint256
-  accountType: AccountType
+  accountType: AccountType!
 }
 
 type Pause @entity(immutable: true) {
