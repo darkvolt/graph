@@ -1,100 +1,16 @@
 import {
-  Issue as IssueEvent,
-  Redeem as RedeemEvent,
-  Deprecate as DeprecateEvent,
-  Params as ParamsEvent,
-  DestroyedBlackFunds as DestroyedBlackFundsEvent,
   AddedBlackList as AddedBlackListEvent,
   RemovedBlackList as RemovedBlackListEvent,
-  Approval as ApprovalEvent,
   Transfer as TransferEvent,
-  Pause as PauseEvent,
-  Unpause as UnpauseEvent
 } from "../generated/TetherToken/TetherToken"
 import {
-  Issue,
-  Redeem,
-  Deprecate,
-  Params,
-  DestroyedBlackFunds,
   AddedBlackList,
   RemovedBlackList,
-  Approval,
   Transfer,
-  Pause,
-  Unpause,
-  Holder
+  Holder, BlackList
 } from "../generated/schema"
 import { BigInt } from "@graphprotocol/graph-ts";
 
-export function handleIssue(event: IssueEvent): void {
-  let entity = new Issue(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity.amount = event.params.amount
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
-}
-
-export function handleRedeem(event: RedeemEvent): void {
-  let entity = new Redeem(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity.amount = event.params.amount
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
-}
-
-export function handleDeprecate(event: DeprecateEvent): void {
-  let entity = new Deprecate(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity.newAddress = event.params.newAddress
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
-}
-
-export function handleParams(event: ParamsEvent): void {
-  let entity = new Params(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity.feeBasisPoints = event.params.feeBasisPoints
-  entity.maxFee = event.params.maxFee
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
-}
-
-export function handleDestroyedBlackFunds(
-  event: DestroyedBlackFundsEvent
-): void {
-  let entity = new DestroyedBlackFunds(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity._blackListedUser = event.params._blackListedUser
-  entity._balance = event.params._balance
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
-}
 
 export function handleAddedBlackList(event: AddedBlackListEvent): void {
   let entity = new AddedBlackList(
@@ -107,6 +23,18 @@ export function handleAddedBlackList(event: AddedBlackListEvent): void {
   entity.transactionHash = event.transaction.hash
 
   entity.save()
+
+  let blackList = BlackList.load(event.params._user)
+  if (!blackList){
+    blackList = new BlackList(event.params._user)
+    blackList.isBlackListed = true
+    blackList.addBlackList = [entity.id]
+    blackList.removeBlackList = []
+  }else {
+    blackList.isBlackListed = true
+    blackList.addBlackList = blackList.addBlackList.concat([entity.id])
+  }
+  blackList.save()
 }
 
 export function handleRemovedBlackList(event: RemovedBlackListEvent): void {
@@ -120,22 +48,20 @@ export function handleRemovedBlackList(event: RemovedBlackListEvent): void {
   entity.transactionHash = event.transaction.hash
 
   entity.save()
+
+  let blackList = BlackList.load(event.params._user)
+  if (blackList){
+    blackList.isBlackListed = false
+    blackList.removeBlackList = blackList.removeBlackList.concat([entity.id])
+  }else {
+    blackList = new BlackList(event.params._user)
+    blackList.isBlackListed = false
+    blackList.addBlackList = []
+    blackList.removeBlackList = [entity.id]
+  }
+  blackList.save()
 }
 
-export function handleApproval(event: ApprovalEvent): void {
-  let entity = new Approval(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity.owner = event.params.owner
-  entity.spender = event.params.spender
-  entity.value = event.params.value
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
-}
 
 export function handleTransfer(event: TransferEvent): void {
   let entity = new Transfer(
@@ -177,30 +103,6 @@ export function handleTransfer(event: TransferEvent): void {
     holderTo.balance = bal.plus(event.params.value)
     holderTo.save()
   }
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
-}
-
-export function handlePause(event: PauseEvent): void {
-  let entity = new Pause(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
-}
-
-export function handleUnpause(event: UnpauseEvent): void {
-  let entity = new Unpause(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp
